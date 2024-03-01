@@ -36,7 +36,7 @@ class Worker (mesa.Agent):
     def __init__(self, model, worker_id, crew, crew_type, p_unsafe_condition, risk_perception_coeff, attitude_change,
                  perceived_workgroup_norm, memory_capa, perceived_management_norm, min_risk_acceptance,
                  max_risk_acceptance, error_rate, weight_social, risk_attitude, freq_reun,
-                 freq_trein):  # manageri
+                 freq_trein_1, freq_trein_2):  # manageri
 
         # self permite que a variavel seja compartilhada entre todas as funçoes de uma classe
 
@@ -78,17 +78,23 @@ class Worker (mesa.Agent):
         self.near_miss = 0
 
         self.freq_reun = freq_reun
-        self.freq_trein = 360/freq_trein  # transformei para dias entre os treinamentos
+        self.freq_trein_1 = 360/freq_trein_1 
+        self.freq_trein_2 = 360/freq_trein_2  # transformei para dias entre os treinamentos
         self.day = 1
         self.day2 = 1
         self.day3 = 1
+        self.day4 = 1
         self.managerial_action = np.random.uniform(0.4, 0.6)
         self.perceived_risk = 0
         self.managerial_attitude_change = 0
         self.daily_lost = 0
-        self.lost_freq_trein = 0
-
+        self.lost_freq_trein_1 = 0
+        self.lost_freq_trein_2 = 0
+        self.month_1=1
+        self.month_2=1
         self.fma = 0.5
+        self.taxa_2=0
+        self.taxa_1=0
         # sorteio pra ver se o agente tera ou não uma ação perigosa, 0 ou 1 tem probabilidades iguais
         if np.random.uniform(0, 1) > 0.5:
             self.unsafe_behavior = 0
@@ -116,8 +122,7 @@ class Worker (mesa.Agent):
     def perceiving_risk(self):
         # Risk perception coefficient is determined by changes in risk attitude
         # percepçao de risco vai diminuir com o aumento da attitude change
-        self.risk_perception_coeff -= (self.attitude_change +
-                                       self.managerial_attitude_change)/2
+        self.risk_perception_coeff -= (self.attitude_change + self.managerial_attitude_change)/2
 
         # Perceived risk is a function of actual risk and risk perception coefficient
         # leva em consideração o risco real e se maior a percepção de risco mais chances dele perver o risco
@@ -157,6 +162,7 @@ class Worker (mesa.Agent):
         self.previous_perceievd_management_norm = self.perceived_management_norm
         self.perceived_management_norm = (1-1/self.memory_capa)*self.previous_perceievd_management_norm + (
             1/self.memory_capa) * self.perceived_manager_risk_acceptance
+        
         # pesa a norma gerencial com a atual aceitação de nivel de risco gerencial ( tudo isso em relação ao que os agentes percebem que são esses valores)
         return
 
@@ -219,8 +225,7 @@ class Worker (mesa.Agent):
             else:
                 self.perceived_manager_risk_acceptance = np.random.uniform(
                     self.perceived_risk, 1)
-
-    # NEAR MISS É  CONTRARIO DO ERROR RATE, ENTÃO O AGENTE PODE SE SAFAR DE UMA AÇÃO RUIM
+    # NEAR MISS É  CONTRARIO DO ERROR RATE, ENTÃO O AGENTE PODE SE SAFAR89 DE UMA AÇÃO RUIM
     def near_miss_occurrence(self):
         # If the worker performs an unsafe behavior, there is some possibilities of the near miss
         if self.unsafe_behavior == 1 or self.unsafe_behavior == 2:
@@ -250,22 +255,41 @@ class Worker (mesa.Agent):
         self.risk_attitude = self.previous_risk_attitude + self.attitude_change
 
     def updating_risk_attitude_2(self):
-
         self.previous_risk_attitude = self.risk_attitude
         # ------------------- AÇÕES GERENCIAIS ---------------------
         # definindo perda diaria
-        self.daily_lost = np.random.uniform(0, 0.001)
-        if self.day2 % 15 == 0:
-            self.lost_freq_trein = np.random.uniform(0, 0.02)
+        #self.daily_lost = np.random.uniform(0, 0.001)
+        
+        if self.month_1==0:
+            if self.day2 % 30 == 0:
+                self.lost_freq_trein_1 = self.taxa_1
+                self.month_1=1
         else:
-            self.lost_freq_trein = 0
+            self.lost_freq_trein_1 = 0
+            
+        if self.month_2==0:
+            if self.day4 % 30 == 0:
+                self.lost_freq_trein_2 = self.taxa_2
+                self.month_2=1
+        else:
+            self.lost_freq_trein_2 = 0
 
-        if self.day2 == self.freq_trein:  # dia de treinamento
+        if self.day2 == self.freq_trein_1:  # dia de treinamento 1
             self.managerial_attitude_change = - np.random.uniform(
                 0.15, 0.25)
+            self.month_1 = 0
+            self.taxa_1 = -self.managerial_attitude_change
             self.day2 = 1
+        elif self.day4 == self.freq_trein_2:  # dia de treinamento 2
+            self.managerial_attitude_change = - np.random.uniform(
+                0.15, 0.25)
+            self.month_2 = 0
+            self.taxa_2 = -self.managerial_attitude_change
+            
+            self.day4 = 1
         else:  # avaliamos dds
             self.day2 += 1
+            self.day4 += 1
             if self.freq_reun == 1:  # diario
                 self.managerial_attitude_change = - np.random.uniform(
                     0.001, 0.002)
@@ -280,8 +304,8 @@ class Worker (mesa.Agent):
             else:
                 self.managerial_attitude_change = 0
         self.risk_attitude = self.previous_risk_attitude + \
-            self.managerial_attitude_change + self.daily_lost + \
-            self.lost_freq_trein
+            self.managerial_attitude_change  + \
+            self.lost_freq_trein_1 + self.lost_freq_trein_2 # + self.daily_lost
 
 
 # In[11]:
@@ -294,7 +318,7 @@ class Model (mesa.Model):
     """
 
     def __init__(self, num_crews_1, num_worker_per_crew_1, num_crews_2, num_worker_per_crew_2, num_other_workers,
-                 n_steps, activity_risk, freq_reun, freq_trein,  feedback_frequency, using_mesa):
+                 n_steps, activity_risk, freq_reun, freq_trein_1,  freq_trein_2 ,  feedback_frequency, using_mesa):
         # , using_mesa
         # using_mesa = 1
         # Ao lado coloquei os valores das variaveis na inicialização que tem acima
@@ -317,16 +341,16 @@ class Model (mesa.Model):
         self.error_rate = 0.01
         self.min_risk_perception_coeff = 1.2
         self.max_risk_perception_coeff = 0.6
-        self.min_perceived_workgroup_norm = 0.1
-        self.max_perceived_workgroup_norm = 0.9
-        self.min_perceived_management_norm = 0.1
-        self.max_perceived_management_norm = 0.9
+        self.min_perceived_workgroup_norm = 0.1 #0.88 # era 0.1, mudou de acordo com a estatistica
+        self.max_perceived_workgroup_norm = 0.9 #0.94 # era 0.9, mudou de acordo com a estatistica
+        self.min_perceived_management_norm = 0.1 #0.69 # era 0.1, mudou de acordo com a estatistica
+        self.max_perceived_management_norm = 0.9 #0.94 # era 0.9, mudou de acordo com a estatistica
         self.memory_capa = 15
         self.min_manager_standard = 0.2
         self.max_manager_standard = 0.4
         self.attitude_change = 0
         self.weight_social = 0.75
-        self.near_miss_occurence_coeff = 0.01
+        self.near_miss_occurence_coeff = 0.008 #0.01
 
         self.min_risk_acceptance = 0.1
         self.max_risk_acceptance = 0.9
@@ -352,7 +376,8 @@ class Model (mesa.Model):
             self.running = False
             print('error')
 
-        self.freq_trein = freq_trein
+        self.freq_trein_1 = freq_trein_1
+        self.freq_trein_2 = freq_trein_2
 
         self.t = 1
         self.worker = []
@@ -372,6 +397,7 @@ class Model (mesa.Model):
         self.history_perceived_management_norm = []
         self.history_incident_rate = []
         self.history_unsafe_behavior_ratio = []
+        
 
         # ja definindo todos os valores das variaveis e constantes de cada agente
         self.setup_worker()
@@ -403,32 +429,34 @@ class Model (mesa.Model):
         """
         Method to set up workers in the model
         """
-
+        range_1= self.num_crews_1*self.num_worker_per_crew_1
+        print(range_1)
         a = 1
         id = 0
-        for i in range(self.num_crews_1*self.num_worker_per_crew_1):
+        for i in range(range_1):
             if i % self.num_worker_per_crew_1 == 0:
                 a += 1
-
             self.worker.append(Worker(model=self, worker_id=id, crew=a, crew_type=1,
                                       p_unsafe_condition=self.activity_risk, risk_perception_coeff=np.random.uniform(self.min_risk_perception_coeff, self.max_risk_perception_coeff), perceived_workgroup_norm=np.random.uniform(self.min_perceived_workgroup_norm, self.max_perceived_workgroup_norm), memory_capa=self.memory_capa, perceived_management_norm=np.random.uniform(
-                                          self.min_perceived_management_norm, self.max_perceived_management_norm), min_risk_acceptance=self.min_risk_acceptance, max_risk_acceptance=self.max_risk_acceptance, error_rate=self.error_rate, attitude_change=self.attitude_change, weight_social=self.weight_social, risk_attitude=np.random.uniform(self.min_risk_attitude, self.max_risk_attitude),  freq_reun=self.freq_reun, freq_trein=self.freq_trein))
+                                          self.min_perceived_management_norm, self.max_perceived_management_norm), min_risk_acceptance=self.min_risk_acceptance, max_risk_acceptance=self.max_risk_acceptance, error_rate=self.error_rate, attitude_change=self.attitude_change, weight_social=self.weight_social, risk_attitude=np.random.uniform(self.min_risk_attitude, self.max_risk_attitude),  freq_reun=self.freq_reun, freq_trein_1=self.freq_trein_1, freq_trein_2=self.freq_trein_2))
             id += 1
 
         for j in range(self.num_crews_2*self.num_worker_per_crew_2):
             # .append() adiciona itens ao vetor self.worker, ele então chama a classe worker e insere os valores
             if j % self.num_worker_per_crew_1 == 0:
                 a += 1
+            print("bb")
             self.worker.append(Worker(model=self, worker_id=id, crew=a, crew_type=2,
                                       p_unsafe_condition=self.activity_risk, risk_perception_coeff=np.random.uniform(self.min_risk_perception_coeff, self.max_risk_perception_coeff), perceived_workgroup_norm=np.random.uniform(self.min_perceived_workgroup_norm, self.max_perceived_workgroup_norm), memory_capa=self.memory_capa, perceived_management_norm=np.random.uniform(
-                                          self.min_perceived_management_norm, self.max_perceived_management_norm), min_risk_acceptance=self.min_risk_acceptance, max_risk_acceptance=self.max_risk_acceptance, error_rate=self.error_rate, attitude_change=self.attitude_change, weight_social=self.weight_social, risk_attitude=np.random.uniform(self.min_risk_attitude, self.max_risk_attitude),  freq_reun=self.freq_reun, freq_trein=self.freq_trein))
+                                          self.min_perceived_management_norm, self.max_perceived_management_norm), min_risk_acceptance=self.min_risk_acceptance, max_risk_acceptance=self.max_risk_acceptance, error_rate=self.error_rate, attitude_change=self.attitude_change, weight_social=self.weight_social, risk_attitude=np.random.uniform(self.min_risk_attitude, self.max_risk_attitude),  freq_reun=self.freq_reun, freq_trein_1=self.freq_trein_1, freq_trein_2=self.freq_trein_2))
             id += 1
 
         a += 1
         for k in range(self.num_other_workers):
+            print("cc")
             self.worker.append(Worker(model=self, worker_id=id, crew=a, crew_type=3,
                                       p_unsafe_condition=self.activity_risk, risk_perception_coeff=np.random.uniform(self.min_risk_perception_coeff, self.max_risk_perception_coeff), perceived_workgroup_norm=np.random.uniform(self.min_perceived_workgroup_norm, self.max_perceived_workgroup_norm), memory_capa=self.memory_capa, perceived_management_norm=np.random.uniform(
-                                          self.min_perceived_management_norm, self.max_perceived_management_norm), min_risk_acceptance=self.min_risk_acceptance, max_risk_acceptance=self.max_risk_acceptance, error_rate=self.error_rate, attitude_change=self.attitude_change, weight_social=self.weight_social, risk_attitude=np.random.uniform(self.min_risk_attitude, self.max_risk_attitude),  freq_reun=self.freq_reun, freq_trein=self.freq_trein))
+                                          self.min_perceived_management_norm, self.max_perceived_management_norm), min_risk_acceptance=self.min_risk_acceptance, max_risk_acceptance=self.max_risk_acceptance, error_rate=self.error_rate, attitude_change=self.attitude_change, weight_social=self.weight_social, risk_attitude=np.random.uniform(self.min_risk_attitude, self.max_risk_attitude),  freq_reun=self.freq_reun, freq_trein_1=self.freq_trein_1, freq_trein_2=self.freq_trein_2))
             id += 1
 
     # retorna quais são os vizinhos de cada agente
@@ -550,7 +578,7 @@ class Model (mesa.Model):
                     else:
                         self.worker[i].workgroup_behavior = self.worker[i].workgroup_behavior
 
-                # self.worker[i].perceiving_workgroup_norm()
+                #self.worker[i].perceiving_workgroup_norm()
                 self.worker[i].perceiving_management_norm()
                 self.worker[i].determining_risk_acceptance()
                 self.worker[i].decision_making()
@@ -560,15 +588,17 @@ class Model (mesa.Model):
                 self.worker[i].updating_risk_attitude()
             self.worker[i].updating_risk_attitude_2()
             self.worker[i].determining_risk_acceptance()
-
+    
     # todas as funçoes a seguir tirando a ultima são apara tirar a media entre todos os workers dos seus respectivos dados
     @staticmethod
     def get_avg_risk_perception(self):
         total = 0
+        a=0
         for worker in self.worker:
             if worker.crew_type != 3:
                 total += worker.perceived_risk
-        return total / len(self.worker)
+                a=a+1
+        return total / a
 
     @staticmethod
     def get_unsafe_behavior(self):
@@ -592,26 +622,32 @@ class Model (mesa.Model):
     @staticmethod
     def get_avg_risk_attitude(self):
         total = 0
+        a=0
         for worker in self.worker:
             if worker.crew_type != 3:
                 total += worker.risk_attitude
-        return total / len(self.worker)
+                a=a+1
+        return total / a
 
     @staticmethod
     def get_avg_risk_acceptance(self):
         total = 0
+        a=0
         for worker in self.worker:
             if worker.crew_type != 3:
                 total += worker.risk_acceptance
-        return total / len(self.worker)
+                a=a+1
+        return total / a
  # TIVE QUE REPETIR POIS ACHO QUE QUANDO USA STATIC METOD PODE DE ALGUM ERRO
 
     def get_avg_risk_perception_2(self):
         total = 0
+        a=0
         for worker in self.worker:
             if worker.crew_type != 3:
                 total += worker.perceived_risk
-        return total / len(self.worker)
+                a=a+1
+        return total / a
 
     def get_unsafe_behavior_2(self):
         total = 0
@@ -652,16 +688,31 @@ class Model (mesa.Model):
 
     def get_avg_risk_attitude_2(self):
         total = 0
+        a=0
         for worker in self.worker:
             if worker.crew_type != 3:
                 total += worker.risk_attitude
-        return total / len(self.worker)
+                a=a+1
+        return total / a
 
     def get_avg_risk_acceptance_2(self):
         total = 0
+        a=0
         for worker in self.worker:
             if worker.crew_type != 3:
                 total += worker.risk_acceptance
+                a = a+1
+        return total / a
+    
+    def get_perceived_management_norm(self):
+        total = 0
+        for worker in self.worker:
+                total += worker.perceived_management_norm
+        return total / len(self.worker)
+    def get_perceived_workgroup_norm (self):
+        total = 0
+        for worker in self.worker:
+                total += worker.perceived_workgroup_norm
         return total / len(self.worker)
 
     def info_matrix(self):
@@ -709,7 +760,9 @@ class Model (mesa.Model):
                            'history_near_miss_outros': self.history_near_miss_outros,
                            'history_risk_attitude': self.history_risk_attitude,
                            'history_risk_acceptance': self.history_risk_acceptance,
-                           'history_perceived_risk': self.history_perceived_risk})
+                           'history_perceived_risk': self.history_perceived_risk,
+                           'history_perceived_management_norm':self.history_perceived_management_norm,
+                           'history_perceived_workgroup_norm': self.history_perceived_workgroup_norm})
 
         # exportando o DataFrame para um arquivo CSV
         df.to_csv('gerencial_mesa_dados.csv', index=False)
@@ -735,6 +788,8 @@ class Model (mesa.Model):
         self.history_risk_attitude.append(self.get_avg_risk_attitude_2())
         self.history_risk_acceptance.append(self.get_avg_risk_acceptance_2())
         self.history_perceived_risk.append(self.get_avg_risk_perception_2())
+        self.history_perceived_management_norm.append(self.get_perceived_management_norm())
+        self.history_perceived_workgroup_norm.append(self.get_perceived_workgroup_norm ())
 
         self.t = self.t+1
         # print(self.t)
