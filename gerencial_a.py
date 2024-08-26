@@ -1,20 +1,20 @@
-# Biblioteca Mesa
+# Importe a biblioteca Mesa
 from pyexpat import model
 import mesa
 import csv
 
-# Classes e métodos necessários da biblioteca Mesa
+# Importe classes e métodos necessários da biblioteca Mesa
 from mesa.time import RandomActivation
 from mesa.datacollection import DataCollector
 import random
 import pandas as pd
 
-# Bibliotecas diversas
+# Importe bibliotecas científicas
 import numpy as np
 import seaborn
 seaborn.set()
 
-# Definindo a classe do agente Worker, que representa um trabalhador na simulação
+# Defina a classe do agente Worker, que representa um trabalhador na simulação
 class Worker(mesa.Agent):
 
     # Método utilizado para a inicialização da classe Worker
@@ -370,13 +370,13 @@ class Model(mesa.Model):
         # Configuração das variáveis de histórico
         self.setup_worker()  # Configuração dos trabalhadores
         self.datacollector_risk = DataCollector({
-            "Risk Attitude Average": Model.get_avg_risk_attitude,
+            "Risk Attitude": Model.get_avg_risk_attitude_2,
             "Average Risk Tolerance": Model.get_avg_risk_acceptance,
-            "Average Risk Perception": Model.get_avg_risk_perception
+            "Average Risk Perception": Model.get_avg_risk_perception,
         })  # Coletor de dados para risco
         self.datacollector_behavior = DataCollector({
-            "Unsafe Behaviors": Model.get_unsafe_behavior,
-            "Near Misses": Model.get_near_miss
+            "Unsafe Behaviors": Model.get_unsafe_behavior_2,
+            "Near Miss": Model.get_near_miss,
         })  # Coletor de dados para comportamento
         
 
