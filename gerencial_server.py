@@ -89,10 +89,19 @@ simulation_params = {
     ),
 }
 
+chart_attitude = ChartModule(
+    [
+        {"Label": "Risk Attitude", "Color": "purple"},
 
+    ],
+    canvas_height=200,
+    canvas_width=500,
+    data_collector_name="datacollector_risk"
+)
 chart_risk = ChartModule(
     [
-        {"Label": "Média de Tolerância ao Risco", "Color": "blue"},
+        # {"Label": "Risk Attitude Average", "Color": "green"},
+        {"Label": "Average Risk Tolerance", "Color": "blue"},
     ],
     canvas_height=200,
     canvas_width=500,
@@ -100,7 +109,7 @@ chart_risk = ChartModule(
 )
 chart_perception = ChartModule(
     [
-        {"Label": "Média de Percepção de Risco", "Color": "red"},
+        {"Label": "Average Risk Perception", "Color": "red"},
     ],
     canvas_height=200,
     canvas_width=500,
@@ -108,7 +117,7 @@ chart_perception = ChartModule(
 )
 chart_behavior = ChartModule(
     [
-        {"Label": "Comportamentos Inseguros", "Color": "orange"},
+        {"Label": "Unsafe Behaviors", "Color": "orange"},
 
     ],
     canvas_height=200,
@@ -117,7 +126,7 @@ chart_behavior = ChartModule(
 )
 chart_behavior2 = ChartModule(
     [
-        {"Label": "Quase Acidentes", "Color": "purple"},
+        {"Label": "Near Miss", "Color": "blue"},
 
     ],
     canvas_height=200,
@@ -125,11 +134,11 @@ chart_behavior2 = ChartModule(
     data_collector_name="datacollector_behavior"
 )
 
+
 server = ModularServer(Model,
-                       [chart_risk, chart_perception,
-                           chart_behavior, chart_behavior2],
+                       [chart_attitude, chart_risk, chart_perception, chart_behavior, chart_behavior2],
                        'Model',
                        simulation_params
                        )
-server.port = 8521
+server.port = 8526
 server.launch()
